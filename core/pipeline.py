@@ -30,7 +30,7 @@ class FrameProcessingOutput:
 
 
 class TrackerPipeline:
-    """End-to-end vision and analytics pipeline."""
+    """End-to-end vision and analytics pipeline for vertical 700x1200 table."""
 
     def __init__(self, config_data: Dict[str, Any]):
         self.config = config_data
@@ -46,12 +46,15 @@ class TrackerPipeline:
             enabled=bool(fe_cfg.get("enabled", False))
         )
 
-        # 2. Homography Transformer
-        target_res = self.config.get("target_resolution", [1200, 700])
+        # 2. Homography Transformer (Vertical: 700 width x 1200 height)
+        target_res = self.config.get("target_resolution", [700, 1200])
+        self.target_width = target_res[0]
+        self.target_height = target_res[1]
+
         pts = self.config.get("calibration_points", [])
         self.homography = HomographyTransformer(
-            target_width=target_res[0],
-            target_height=target_res[1],
+            target_width=self.target_width,
+            target_height=self.target_height,
             points=pts if len(pts) == 4 else None
         )
 
@@ -90,7 +93,6 @@ class TrackerPipeline:
         )
 
         self._frame_count: int = 0
-        self._last_time: float = 0.0
 
     def reset(self) -> None:
         """Resets tracking and state engines."""
@@ -129,10 +131,10 @@ class TrackerPipeline:
         # Step 1: Lens distortion correction
         undistorted = self.fisheye.undistort(raw_frame)
 
-        # Step 2: Homography perspective rectification
+        # Step 2: Homography perspective rectification (700 x 1200 vertical)
         rectified = self.homography.warp(undistorted)
-        if rectified is None or rectified.shape[0] != 700 or rectified.shape[1] != 1200:
-            rectified = np.zeros((700, 1200, 3), dtype=np.uint8)
+        if rectified is None or rectified.shape[0] != self.target_height or rectified.shape[1] != self.target_width:
+            rectified = np.zeros((self.target_height, self.target_width, 3), dtype=np.uint8)
 
         # Step 3: Ball detection in rectified top-down space
         predicted_pos = (self.kalman.X[0, 0], self.kalman.X[1, 0]) if self.kalman.is_tracking else None
@@ -171,7 +173,7 @@ class TrackerPipeline:
     def _annotate_rectified(self, canvas: np.ndarray,
                             det: DetectionResult,
                             ks: KalmanState) -> np.ndarray:
-        """Renders zones, motion trail, velocity vectors, and state badges onto 1200x700 canvas."""
+        """Renders zones, motion trail, velocity vectors, and state badges onto vertical canvas."""
         # 1. Draw table zones
         canvas = self.zones.draw_zones(canvas)
 
@@ -190,12 +192,10 @@ class TrackerPipeline:
             cx, cy = int(ks.x), int(ks.y)
 
             if ks.is_occluded:
-                # Occluded (predicting behind rods): dashed / yellow circle
                 cv2.circle(canvas, (cx, cy), 12, (0, 220, 255), 2)
                 cv2.putText(canvas, f"PREDICTED ({ks.occlusion_frames})", (cx + 15, cy - 10),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 220, 255), 1, cv2.LINE_AA)
             else:
-                # Directly detected: solid cyan/green circle
                 cv2.circle(canvas, (cx, cy), max(6, int(det.radius)), (0, 255, 0), 2)
                 cv2.circle(canvas, (cx, cy), 3, (0, 0, 255), -1)
 
@@ -218,14 +218,13 @@ class TrackerPipeline:
         if len(pts) == 4:
             pts_arr = np.array(pts, dtype=np.int32).reshape((-1, 1, 2))
             cv2.polylines(canvas, [pts_arr], isClosed=True, color=(0, 255, 255), thickness=2)
-            corner_labels = ["TL", "TR", "BR", "BL"]
+            corner_labels = ["1:TL", "2:TR", "3:BR", "4:BL"]
             for i, p in enumerate(pts):
                 px, py = int(p[0]), int(p[1])
                 cv2.circle(canvas, (px, py), 6, (0, 0, 255), -1)
                 cv2.putText(canvas, f"{corner_labels[i]}: ({px},{py})", (px + 10, py - 5),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 255, 255), 1, cv2.LINE_AA)
 
-        # Inverse transform ball position back to camera frame for verification
         if ks.is_tracking:
             raw_pt = self.homography.inverse_transform_point((ks.x, ks.y))
             if raw_pt:

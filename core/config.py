@@ -9,9 +9,9 @@ import os
 from typing import Dict, Any, List
 
 DEFAULT_CONFIG: Dict[str, Any] = {
-    "version": "1.0.0",
-    "target_resolution": [1200, 700],
-    "pixels_per_cm": 10.0,  # 1200px = 120cm table length -> 10 px/cm
+    "version": "1.1.0",
+    "target_resolution": [700, 1200],  # Vertical Table: 700 width x 1200 height
+    "pixels_per_cm": 10.0,             # 1200px = 120cm table length -> 10 px/cm
     
     # Active video source (filepath string or int index for webcam)
     "source_type": "file",
@@ -28,13 +28,13 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "focal_scale": 0.9,
     },
     
-    # Homography 4 Playfield Corners [x, y] in clockwise order:
-    # Top-Left, Top-Right, Bottom-Right, Bottom-Left
+    # Homography 4 Playfield Corners [x, y] in clockwise order for Vertical Table:
+    # 1. Top-Left (0, 0), 2. Top-Right (700, 0), 3. Bottom-Right (700, 1200), 4. Bottom-Left (0, 1200)
     "calibration_points": [
-        [720, 135],   # Top-Left
-        [1730, 15],   # Top-Right
-        [1895, 785],  # Bottom-Right
-        [870, 650]    # Bottom-Left
+        [870, 650],   # Top-Left (Team A / Black goal side, left wall)
+        [720, 135],   # Top-Right (Team A / Black goal side, right wall)
+        [1730, 15],   # Bottom-Right (Team B / Yellow goal side, right wall)
+        [1895, 785]   # Bottom-Left (Team B / Yellow goal side, left wall)
     ],
     
     # Presets for the two test videos
@@ -46,10 +46,10 @@ DEFAULT_CONFIG: Dict[str, Any] = {
             "k1": 0.0,
             "k2": 0.0,
             "calibration_points": [
+                [870, 650],
                 [720, 135],
                 [1730, 15],
-                [1895, 785],
-                [870, 650]
+                [1895, 785]
             ],
             "hsv_bounds": {
                 "lower1": [0, 60, 40],
@@ -66,10 +66,10 @@ DEFAULT_CONFIG: Dict[str, Any] = {
             "k1": -0.22,
             "k2": 0.05,
             "calibration_points": [
+                [805, 845],
                 [675, 205],
                 [1560, 85],
-                [1690, 720],
-                [805, 845]
+                [1690, 720]
             ],
             "hsv_bounds": {
                 "lower1": [0, 60, 35],
@@ -84,10 +84,8 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     # HSV Ball Detection Thresholds
     "hsv_bounds": {
         "dual_range": True,
-        # Range 1 (Low red/orange)
         "lower1": [0, 60, 40],
         "upper1": [15, 255, 255],
-        # Range 2 (High red wrap-around)
         "lower2": [165, 60, 40],
         "upper2": [180, 255, 255],
     },
@@ -106,24 +104,24 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "process_noise_pos": 1e-2,
         "process_noise_vel": 5.0,
         "measurement_noise": 1.0,
-        "max_prediction_distance": 180.0,  # Max allowable pixel jump between frames
+        "max_prediction_distance": 180.0,
         "motion_trail_length": 25,
     },
     
-    # Field Zones (Canonical 1200 x 700 space)
-    # Rod zones divide the X axis from 0 to 1200
+    # Vertical Field Zones (Canonical 700 width x 1200 height space)
+    # Rod zones divide the Y axis from 0 to 1200
     "zones": {
-        "goal_left": {"x_min": 0, "x_max": 65, "y_min": 210, "y_max": 490},
-        "goal_right": {"x_min": 1135, "x_max": 1200, "y_min": 210, "y_max": 490},
+        "goal_top": {"x_min": 210, "x_max": 490, "y_min": 0, "y_max": 65},
+        "goal_bottom": {"x_min": 210, "x_max": 490, "y_min": 1135, "y_max": 1200},
         "rods": [
-            {"id": "rod_1", "name": "Team A Goalie", "team": "A", "role": "goalie", "x_min": 50, "x_max": 160},
-            {"id": "rod_2", "name": "Team A 2-Bar",  "team": "A", "role": "defense", "x_min": 160, "x_max": 280},
-            {"id": "rod_3", "name": "Team B 3-Bar",  "team": "B", "role": "offense", "x_min": 280, "x_max": 430},
-            {"id": "rod_4", "name": "Team A 5-Bar",  "team": "A", "role": "midfield", "x_min": 430, "x_max": 580},
-            {"id": "rod_5", "name": "Team B 5-Bar",  "team": "B", "role": "midfield", "x_min": 580, "x_max": 730},
-            {"id": "rod_6", "name": "Team A 3-Bar",  "team": "A", "role": "offense", "x_min": 730, "x_max": 880},
-            {"id": "rod_7", "name": "Team B 2-Bar",  "team": "B", "role": "defense", "x_min": 880, "x_max": 1000},
-            {"id": "rod_8", "name": "Team B Goalie", "team": "B", "role": "goalie", "x_min": 1000, "x_max": 1140},
+            {"id": "rod_1", "name": "Team A Goalie", "team": "A", "role": "goalie", "y_min": 50, "y_max": 160},
+            {"id": "rod_2", "name": "Team A 2-Bar",  "team": "A", "role": "defense", "y_min": 160, "y_max": 280},
+            {"id": "rod_3", "name": "Team B 3-Bar",  "team": "B", "role": "offense", "y_min": 280, "y_max": 430},
+            {"id": "rod_4", "name": "Team A 5-Bar",  "team": "A", "role": "midfield", "y_min": 430, "y_max": 580},
+            {"id": "rod_5", "name": "Team B 5-Bar",  "team": "B", "role": "midfield", "y_min": 580, "y_max": 730},
+            {"id": "rod_6", "name": "Team A 3-Bar",  "team": "A", "role": "offense", "y_min": 730, "y_max": 880},
+            {"id": "rod_7", "name": "Team B 2-Bar",  "team": "B", "role": "defense", "y_min": 880, "y_max": 1000},
+            {"id": "rod_8", "name": "Team B Goalie", "team": "B", "role": "goalie", "y_min": 1000, "y_max": 1140},
         ]
     },
     
@@ -150,7 +148,6 @@ class ConfigManager:
             try:
                 with open(self.config_path, "r", encoding="utf-8") as f:
                     loaded = json.load(f)
-                    # Merge shallowly with defaults to ensure all keys exist
                     config = DEFAULT_CONFIG.copy()
                     config.update(loaded)
                     return config

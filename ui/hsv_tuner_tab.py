@@ -139,15 +139,16 @@ class HSVTunerTab(QWidget):
 
         # Right Column: Side-by-side Viewports (Rectified Table and Mask)
         views_panel = QFrame()
-        views_layout = QVBoxLayout(views_panel)
+        views_layout = QHBoxLayout(views_panel)
         views_layout.setContentsMargins(0, 0, 0, 0)
+        views_layout.setSpacing(12)
 
         # Rectified Table View
         rect_group = QGroupBox("Rectified Color Feed")
         rect_group.setStyleSheet("color: #94a3b8; font-weight: bold;")
         rect_layout = QVBoxLayout(rect_group)
         self.lbl_rect_view = QLabel()
-        self.lbl_rect_view.setMinimumSize(480, 280)
+        self.lbl_rect_view.setMinimumSize(280, 480)
         self.lbl_rect_view.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.lbl_rect_view.setStyleSheet("background-color: #0b0f19; border: 1px solid #334155; border-radius: 4px;")
         rect_layout.addWidget(self.lbl_rect_view)
@@ -158,7 +159,7 @@ class HSVTunerTab(QWidget):
         mask_group.setStyleSheet("color: #94a3b8; font-weight: bold;")
         mask_layout = QVBoxLayout(mask_group)
         self.lbl_mask_view = QLabel()
-        self.lbl_mask_view.setMinimumSize(480, 280)
+        self.lbl_mask_view.setMinimumSize(280, 480)
         self.lbl_mask_view.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.lbl_mask_view.setStyleSheet("background-color: #0b0f19; border: 1px solid #334155; border-radius: 4px;")
         mask_layout.addWidget(self.lbl_mask_view)

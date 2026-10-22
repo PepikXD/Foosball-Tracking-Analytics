@@ -1,12 +1,15 @@
 {
-    "version": "1.0.0",
-    "target_resolution": [1200, 700],
+    "version": "1.1.0",
+    "target_resolution": [
+        700,
+        1200
+    ],
     "pixels_per_cm": 10.0,
     "source_type": "file",
-    "video_path": "C:\\Users\\stepa\\Desktop\\TP_fotbalce\\2016_0126_042510_001.MOV",
+    "video_path": "C:\\Users\\stepa\\Desktop\\TP_fotbalce\\2016_0127_045904_001.MOV",
     "camera_index": 0,
     "fisheye": {
-        "enabled": false,
+        "enabled": true,
         "k1": -0.22,
         "k2": 0.05,
         "p1": 0.0,
@@ -14,10 +17,22 @@
         "focal_scale": 0.9
     },
     "calibration_points": [
-        [720, 135],
-        [1730, 15],
-        [1895, 785],
-        [870, 650]
+        [
+            805,
+            845
+        ],
+        [
+            675,
+            205
+        ],
+        [
+            1560,
+            85
+        ],
+        [
+            1690,
+            720
+        ]
     ],
     "presets": {
         "phone_camera_2016_0126": {
@@ -27,16 +42,44 @@
             "k1": 0.0,
             "k2": 0.0,
             "calibration_points": [
-                [720, 135],
-                [1730, 15],
-                [1895, 785],
-                [870, 650]
+                [
+                    870,
+                    650
+                ],
+                [
+                    720,
+                    135
+                ],
+                [
+                    1730,
+                    15
+                ],
+                [
+                    1895,
+                    785
+                ]
             ],
             "hsv_bounds": {
-                "lower1": [0, 60, 40],
-                "upper1": [15, 255, 255],
-                "lower2": [165, 60, 40],
-                "upper2": [180, 255, 255],
+                "lower1": [
+                    0,
+                    60,
+                    40
+                ],
+                "upper1": [
+                    15,
+                    255,
+                    255
+                ],
+                "lower2": [
+                    165,
+                    60,
+                    40
+                ],
+                "upper2": [
+                    180,
+                    255,
+                    255
+                ],
                 "dual_range": true
             }
         },
@@ -47,26 +90,70 @@
             "k1": -0.22,
             "k2": 0.05,
             "calibration_points": [
-                [675, 205],
-                [1560, 85],
-                [1690, 720],
-                [805, 845]
+                [
+                    805,
+                    845
+                ],
+                [
+                    675,
+                    205
+                ],
+                [
+                    1560,
+                    85
+                ],
+                [
+                    1690,
+                    720
+                ]
             ],
             "hsv_bounds": {
-                "lower1": [0, 60, 35],
-                "upper1": [15, 255, 255],
-                "lower2": [165, 60, 35],
-                "upper2": [180, 255, 255],
+                "lower1": [
+                    0,
+                    60,
+                    35
+                ],
+                "upper1": [
+                    15,
+                    255,
+                    255
+                ],
+                "lower2": [
+                    165,
+                    60,
+                    35
+                ],
+                "upper2": [
+                    180,
+                    255,
+                    255
+                ],
                 "dual_range": true
             }
         }
     },
     "hsv_bounds": {
-        "dual_range": true,
-        "lower1": [0, 60, 40],
-        "upper1": [15, 255, 255],
-        "lower2": [165, 60, 40],
-        "upper2": [180, 255, 255]
+        "lower1": [
+            0,
+            60,
+            35
+        ],
+        "upper1": [
+            15,
+            255,
+            255
+        ],
+        "lower2": [
+            165,
+            60,
+            35
+        ],
+        "upper2": [
+            180,
+            255,
+            255
+        ],
+        "dual_range": true
     },
     "contour_filter": {
         "min_area": 40.0,
@@ -83,17 +170,83 @@
         "motion_trail_length": 25
     },
     "zones": {
-        "goal_left": {"x_min": 0, "x_max": 65, "y_min": 210, "y_max": 490},
-        "goal_right": {"x_min": 1135, "x_max": 1200, "y_min": 210, "y_max": 490},
+        "goal_top": {
+            "x_min": 210,
+            "x_max": 490,
+            "y_min": 0,
+            "y_max": 65
+        },
+        "goal_bottom": {
+            "x_min": 210,
+            "x_max": 490,
+            "y_min": 1135,
+            "y_max": 1200
+        },
         "rods": [
-            {"id": "rod_1", "name": "Team A Goalie", "team": "A", "role": "goalie", "x_min": 50, "x_max": 160},
-            {"id": "rod_2", "name": "Team A 2-Bar",  "team": "A", "role": "defense", "x_min": 160, "x_max": 280},
-            {"id": "rod_3", "name": "Team B 3-Bar",  "team": "B", "role": "offense", "x_min": 280, "x_max": 430},
-            {"id": "rod_4", "name": "Team A 5-Bar",  "team": "A", "role": "midfield", "x_min": 430, "x_max": 580},
-            {"id": "rod_5", "name": "Team B 5-Bar",  "team": "B", "role": "midfield", "x_min": 580, "x_max": 730},
-            {"id": "rod_6", "name": "Team A 3-Bar",  "team": "A", "role": "offense", "x_min": 730, "x_max": 880},
-            {"id": "rod_7", "name": "Team B 2-Bar",  "team": "B", "role": "defense", "x_min": 880, "x_max": 1000},
-            {"id": "rod_8", "name": "Team B Goalie", "team": "B", "role": "goalie", "x_min": 1000, "x_max": 1140}
+            {
+                "id": "rod_1",
+                "name": "Team A Goalie",
+                "team": "A",
+                "role": "goalie",
+                "y_min": 50,
+                "y_max": 160
+            },
+            {
+                "id": "rod_2",
+                "name": "Team A 2-Bar",
+                "team": "A",
+                "role": "defense",
+                "y_min": 160,
+                "y_max": 280
+            },
+            {
+                "id": "rod_3",
+                "name": "Team B 3-Bar",
+                "team": "B",
+                "role": "offense",
+                "y_min": 280,
+                "y_max": 430
+            },
+            {
+                "id": "rod_4",
+                "name": "Team A 5-Bar",
+                "team": "A",
+                "role": "midfield",
+                "y_min": 430,
+                "y_max": 580
+            },
+            {
+                "id": "rod_5",
+                "name": "Team B 5-Bar",
+                "team": "B",
+                "role": "midfield",
+                "y_min": 580,
+                "y_max": 730
+            },
+            {
+                "id": "rod_6",
+                "name": "Team A 3-Bar",
+                "team": "A",
+                "role": "offense",
+                "y_min": 730,
+                "y_max": 880
+            },
+            {
+                "id": "rod_7",
+                "name": "Team B 2-Bar",
+                "team": "B",
+                "role": "defense",
+                "y_min": 880,
+                "y_max": 1000
+            },
+            {
+                "id": "rod_8",
+                "name": "Team B Goalie",
+                "team": "B",
+                "role": "goalie",
+                "y_min": 1000,
+                "y_max": 1140
+            }
         ]
     },
     "fsm": {

@@ -1,7 +1,7 @@
 """
 Homography Perspective Transformation Module.
 Resolves perspective distortion caused by off-center camera placement by computing
-a 3x3 transformation matrix M mapping physical table corners to a normalized 1200x700 plane.
+a 3x3 transformation matrix M mapping physical table corners to a normalized 700x1200 vertical plane.
 """
 
 from typing import List, Tuple, Optional
@@ -10,9 +10,9 @@ import numpy as np
 
 
 class HomographyTransformer:
-    """Manages perspective transformation from camera view to canonical 1200x700 table view."""
+    """Manages perspective transformation from camera view to canonical 700x1200 vertical table view."""
 
-    def __init__(self, target_width: int = 1200, target_height: int = 700,
+    def __init__(self, target_width: int = 700, target_height: int = 1200,
                  points: Optional[List[List[float]]] = None):
         self.target_width = target_width
         self.target_height = target_height
@@ -52,7 +52,7 @@ class HomographyTransformer:
         return self.matrix is not None
 
     def warp(self, frame: np.ndarray) -> np.ndarray:
-        """Warps the raw input frame into the canonical 1200x700 top-down table view."""
+        """Warps the raw input frame into the canonical 700x1200 top-down table view."""
         if self.matrix is None or frame is None:
             return frame
         return cv2.warpPerspective(

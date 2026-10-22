@@ -20,7 +20,7 @@ class TestCoreModules(unittest.TestCase):
 
     def test_homography_warp(self):
         """TC-VIS-01: Homography transform produces rectangular top-down view."""
-        transformer = HomographyTransformer(1200, 700)
+        transformer = HomographyTransformer(700, 1200)
         points = [[100, 100], [1800, 120], [1750, 950], [120, 900]]
         self.assertTrue(transformer.set_points(points))
         self.assertTrue(transformer.is_calibrated())
@@ -71,15 +71,15 @@ class TestCoreModules(unittest.TestCase):
         # Ball in midfield
         events = fsm.process_frame(
             timestamp_ms=1000,
-            x=600.0, y=350.0, vx=0.0, vy=0.0, speed_kmh=2.0,
+            x=350.0, y=600.0, vx=0.0, vy=0.0, speed_kmh=2.0,
             is_tracking=True, zones=zones
         )
         self.assertEqual(len(events), 0)
 
-        # Ball shoots into Right Goal mouth (Team A scores)
+        # Ball shoots into Bottom Goal mouth (Team A scores)
         goal_events = fsm.process_frame(
             timestamp_ms=1200,
-            x=1160.0, y=350.0, vx=500.0, vy=0.0, speed_kmh=25.0,
+            x=350.0, y=1160.0, vx=0.0, vy=500.0, speed_kmh=25.0,
             is_tracking=True, zones=zones
         )
         self.assertEqual(len(goal_events), 1)
@@ -100,9 +100,9 @@ class TestCoreModules(unittest.TestCase):
             timestamp_ms=500,
             event_type=EventType.GOAL,
             team="A",
-            zone_id="goal_right",
+            zone_id="goal_bottom",
             velocity_kmh=22.5,
-            x=1150.0, y=350.0,
+            x=350.0, y=1160.0,
             details="Great shot"
         )
         db.log_event(mid, event)

@@ -1,23 +1,23 @@
 """
 Main Live Match Dashboard Tab.
-Presents the live scoreboard, match timer, rectified & raw video viewports,
-ball speed telemetry, active rod possession indicators, and real-time event log.
+Presents the live scoreboard, match timer, vertical 700x1200 table view,
+ball speed telemetry, active rod possession indicators, and real-time event ticker.
 """
 
 from typing import Optional, Dict, Any
-from PyQt6.QtCore import Qt, pyqtSignal, QTime, QTimer
+from PyQt6.QtCore import Qt, pyqtSignal, QTimer
 from PyQt6.QtGui import QImage, QPixmap, QFont, QColor
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QSlider, QComboBox, QSplitter, QTableWidget, QTableWidgetItem,
-    QHeaderView, QFrame, QGroupBox, QProgressBar
+    QHeaderView, QFrame, QGroupBox
 )
 
 from core.fsm import GameEvent, EventType
 
 
 class DashboardTab(QWidget):
-    """Main live match analytics dashboard."""
+    """Main live match analytics dashboard optimized for vertical table presentation."""
 
     # UI interaction signals
     pause_toggled = pyqtSignal()
@@ -58,20 +58,20 @@ class DashboardTab(QWidget):
             }
         """)
         top_layout = QHBoxLayout(top_bar)
-        top_layout.setContentsMargins(12, 8, 12, 8)
+        top_layout.setContentsMargins(12, 6, 12, 6)
 
-        # Team A Box (Blue)
+        # Team A Box (Blue / Top Goal)
         team_a_box = QHBoxLayout()
         self.btn_sub_a = QPushButton("-")
         self.btn_sub_a.setFixedSize(28, 28)
         self.btn_sub_a.setStyleSheet("background-color: #334155; color: white; font-weight: bold; border-radius: 4px;")
         self.btn_sub_a.clicked.connect(lambda: self.score_override.emit("A", -1))
 
-        self.lbl_team_a = QLabel("TEAM BLUE")
-        self.lbl_team_a.setStyleSheet("color: #38bdf8; font-weight: bold; font-size: 16px;")
+        self.lbl_team_a = QLabel("TEAM BLUE (TOP)")
+        self.lbl_team_a.setStyleSheet("color: #38bdf8; font-weight: bold; font-size: 15px;")
 
         self.lbl_score_a = QLabel("0")
-        self.lbl_score_a.setStyleSheet("color: #ffffff; font-weight: bold; font-size: 36px; padding: 0 12px;")
+        self.lbl_score_a.setStyleSheet("color: #ffffff; font-weight: bold; font-size: 34px; padding: 0 10px;")
 
         self.btn_add_a = QPushButton("+")
         self.btn_add_a.setFixedSize(28, 28)
@@ -80,7 +80,7 @@ class DashboardTab(QWidget):
 
         team_a_box.addWidget(self.btn_sub_a)
         team_a_box.addWidget(self.lbl_team_a)
-        team_a_box.addSpacing(10)
+        team_a_box.addSpacing(8)
         team_a_box.addWidget(self.lbl_score_a)
         team_a_box.addWidget(self.btn_add_a)
 
@@ -88,7 +88,7 @@ class DashboardTab(QWidget):
         center_box = QVBoxLayout()
         self.lbl_clock = QLabel("00:00")
         self.lbl_clock.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.lbl_clock.setStyleSheet("color: #f8fafc; font-size: 24px; font-weight: bold; font-family: monospace;")
+        self.lbl_clock.setStyleSheet("color: #f8fafc; font-size: 22px; font-weight: bold; font-family: monospace;")
 
         clock_ctrls = QHBoxLayout()
         self.btn_start_match = QPushButton("Start Match")
@@ -105,7 +105,7 @@ class DashboardTab(QWidget):
         center_box.addWidget(self.lbl_clock)
         center_box.addLayout(clock_ctrls)
 
-        # Team B Box (Red)
+        # Team B Box (Red / Bottom Goal)
         team_b_box = QHBoxLayout()
         self.btn_sub_b = QPushButton("-")
         self.btn_sub_b.setFixedSize(28, 28)
@@ -113,10 +113,10 @@ class DashboardTab(QWidget):
         self.btn_sub_b.clicked.connect(lambda: self.score_override.emit("B", -1))
 
         self.lbl_score_b = QLabel("0")
-        self.lbl_score_b.setStyleSheet("color: #ffffff; font-weight: bold; font-size: 36px; padding: 0 12px;")
+        self.lbl_score_b.setStyleSheet("color: #ffffff; font-weight: bold; font-size: 34px; padding: 0 10px;")
 
-        self.lbl_team_b = QLabel("TEAM RED")
-        self.lbl_team_b.setStyleSheet("color: #f87171; font-weight: bold; font-size: 16px;")
+        self.lbl_team_b = QLabel("TEAM RED (BOTTOM)")
+        self.lbl_team_b.setStyleSheet("color: #f87171; font-weight: bold; font-size: 15px;")
 
         self.btn_add_b = QPushButton("+")
         self.btn_add_b.setFixedSize(28, 28)
@@ -125,7 +125,7 @@ class DashboardTab(QWidget):
 
         team_b_box.addWidget(self.btn_sub_b)
         team_b_box.addWidget(self.lbl_score_b)
-        team_b_box.addSpacing(10)
+        team_b_box.addSpacing(8)
         team_b_box.addWidget(self.lbl_team_b)
         team_b_box.addWidget(self.btn_add_b)
 
@@ -138,22 +138,22 @@ class DashboardTab(QWidget):
         main_layout.addWidget(top_bar)
 
         # ---------------------------------------------------------
-        # 2. Main Middle Area: Splitter (Video Viewport & Live Event Feed)
+        # 2. Main Middle Area: Splitter (Vertical Video Viewport & Telemetry/Events)
         # ---------------------------------------------------------
         splitter = QSplitter(Qt.Orientation.Horizontal)
 
-        # Left / Center: Video Display and Telemetry
+        # Center / Left: Vertical Video Display
         video_container = QWidget()
         vid_layout = QVBoxLayout(video_container)
         vid_layout.setContentsMargins(0, 0, 0, 0)
         vid_layout.setSpacing(6)
 
-        # Video View Mode Toggle Bar
+        # View Toggle Bar
         view_toggle_layout = QHBoxLayout()
-        self.lbl_view_title = QLabel("View: Rectified Top-Down (1200x700)")
+        self.lbl_view_title = QLabel("Vertical Rectified View (700x1200)")
         self.lbl_view_title.setStyleSheet("color: #94a3b8; font-weight: bold;")
         self.combo_view_mode = QComboBox()
-        self.combo_view_mode.addItems(["Rectified Table (1200x700)", "Raw Camera Frame", "HSV Detection Mask"])
+        self.combo_view_mode.addItems(["Rectified Table (Vertical 700x1200)", "Raw Camera Frame", "HSV Detection Mask"])
         self.combo_view_mode.setStyleSheet("background-color: #334155; color: white; padding: 3px 8px; border-radius: 4px;")
         self.combo_view_mode.currentIndexChanged.connect(self._on_view_mode_changed)
 
@@ -167,47 +167,12 @@ class DashboardTab(QWidget):
         view_toggle_layout.addWidget(self.combo_view_mode)
         vid_layout.addLayout(view_toggle_layout)
 
-        # Video Frame Label
+        # Vertical Video Frame Display (Portrait Aspect Ratio)
         self.video_label = QLabel()
         self.video_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.video_label.setStyleSheet("background-color: #0b0f19; border: 1px solid #334155; border-radius: 6px;")
-        self.video_label.setMinimumSize(720, 420)
+        self.video_label.setMinimumSize(420, 600)
         vid_layout.addWidget(self.video_label, stretch=1)
-
-        # Real-time HUD Telemetry Bar
-        hud_bar = QFrame()
-        hud_bar.setStyleSheet("background-color: #1e293b; border-radius: 6px; padding: 6px;")
-        hud_layout = QHBoxLayout(hud_bar)
-        hud_layout.setContentsMargins(8, 4, 8, 4)
-
-        # Speed Gauge
-        self.lbl_speed_val = QLabel("0.0 km/h")
-        self.lbl_speed_val.setStyleSheet("color: #facc15; font-size: 18px; font-weight: bold;")
-        hud_layout.addWidget(QLabel("Ball Speed:"))
-        hud_layout.addWidget(self.lbl_speed_val)
-        hud_layout.addSpacing(20)
-
-        # Active Rod Possession
-        hud_layout.addWidget(QLabel("Active Rod:"))
-        self.lbl_active_rod = QLabel("None")
-        self.lbl_active_rod.setStyleSheet("color: #38bdf8; font-weight: bold;")
-        hud_layout.addWidget(self.lbl_active_rod)
-        hud_layout.addSpacing(20)
-
-        # Possession Split Bar
-        hud_layout.addWidget(QLabel("Possession:"))
-        self.lbl_poss_split = QLabel("50% A | 50% B")
-        self.lbl_poss_split.setStyleSheet("color: #e2e8f0; font-weight: bold;")
-        hud_layout.addWidget(self.lbl_poss_split)
-        hud_layout.addSpacing(20)
-
-        # Tracking status badge
-        self.lbl_tracking_status = QLabel("SEARCHING")
-        self.lbl_tracking_status.setStyleSheet("background-color: #475569; color: white; padding: 2px 8px; border-radius: 4px; font-size: 11px;")
-        hud_layout.addStretch()
-        hud_layout.addWidget(self.lbl_tracking_status)
-
-        vid_layout.addWidget(hud_bar)
 
         # Video Playback Controls Bar
         playback_bar = QHBoxLayout()
@@ -237,11 +202,56 @@ class DashboardTab(QWidget):
 
         splitter.addWidget(video_container)
 
-        # Right: Real-time Event Log Panel
+        # Right Column: Live HUD Telemetry Cards & Live Event Ticker
+        right_container = QWidget()
+        right_layout = QVBoxLayout(right_container)
+        right_layout.setContentsMargins(0, 0, 0, 0)
+        right_layout.setSpacing(10)
+
+        # HUD Telemetry Frame
+        hud_frame = QFrame()
+        hud_frame.setStyleSheet("background-color: #1e293b; border-radius: 6px; padding: 8px;")
+        hud_vlayout = QVBoxLayout(hud_frame)
+        hud_vlayout.setSpacing(6)
+
+        # Speed Row
+        r_speed = QHBoxLayout()
+        r_speed.addWidget(QLabel("Live Ball Speed:"))
+        self.lbl_speed_val = QLabel("0.0 km/h")
+        self.lbl_speed_val.setStyleSheet("color: #facc15; font-size: 20px; font-weight: bold;")
+        r_speed.addWidget(self.lbl_speed_val)
+        r_speed.addStretch()
+
+        self.lbl_tracking_status = QLabel("SEARCHING")
+        self.lbl_tracking_status.setStyleSheet("background-color: #475569; color: white; padding: 2px 8px; border-radius: 4px; font-size: 11px;")
+        r_speed.addWidget(self.lbl_tracking_status)
+        hud_vlayout.addLayout(r_speed)
+
+        # Active Rod Row
+        r_rod = QHBoxLayout()
+        r_rod.addWidget(QLabel("Active Rod:"))
+        self.lbl_active_rod = QLabel("Midfield")
+        self.lbl_active_rod.setStyleSheet("color: #38bdf8; font-weight: bold; font-size: 14px;")
+        r_rod.addWidget(self.lbl_active_rod)
+        r_rod.addStretch()
+        hud_vlayout.addLayout(r_rod)
+
+        # Possession Split Row
+        r_poss = QHBoxLayout()
+        r_poss.addWidget(QLabel("Possession:"))
+        self.lbl_poss_split = QLabel("50.0% Blue | 50.0% Red")
+        self.lbl_poss_split.setStyleSheet("color: #e2e8f0; font-weight: bold;")
+        r_poss.addWidget(self.lbl_poss_split)
+        r_poss.addStretch()
+        hud_vlayout.addLayout(r_poss)
+
+        right_layout.addWidget(hud_frame)
+
+        # Live Event Log Panel
         event_panel = QFrame()
-        event_panel.setStyleSheet("background-color: #1e293b; border-radius: 6px; padding: 6px;")
+        event_panel.setStyleSheet("background-color: #1e293b; border-radius: 6px; padding: 8px;")
         event_layout = QVBoxLayout(event_panel)
-        event_layout.setContentsMargins(8, 8, 8, 8)
+        event_layout.setContentsMargins(6, 6, 6, 6)
 
         event_header = QLabel("LIVE MATCH EVENT TICKER")
         event_header.setStyleSheet("color: #94a3b8; font-weight: bold; font-size: 12px;")
@@ -269,10 +279,11 @@ class DashboardTab(QWidget):
             }
         """)
         event_layout.addWidget(self.event_table)
+        right_layout.addWidget(event_panel, stretch=1)
 
-        splitter.addWidget(event_panel)
+        splitter.addWidget(right_container)
         splitter.setStretchFactor(0, 3)
-        splitter.setStretchFactor(1, 1)
+        splitter.setStretchFactor(1, 2)
 
         main_layout.addWidget(splitter, stretch=1)
 
@@ -315,7 +326,7 @@ class DashboardTab(QWidget):
 
     def _on_view_mode_changed(self, idx: int) -> None:
         titles = [
-            "View: Rectified Top-Down (1200x700)",
+            "View: Vertical Rectified Table (700x1200)",
             "View: Raw Camera Frame",
             "View: HSV Detection Mask"
         ]
@@ -326,7 +337,7 @@ class DashboardTab(QWidget):
     # Update from Worker Thread
     # -------------------------------------------------------------
     def update_frame(self, q_rect: QImage, q_raw: QImage, q_mask: QImage) -> None:
-        """Displays active frame according to view mode combo."""
+        """Displays active frame in vertical portrait viewport."""
         mode = self.combo_view_mode.currentIndex()
         target_img = q_rect if mode == 0 else (q_raw if mode == 1 else q_mask)
 
@@ -344,18 +355,18 @@ class DashboardTab(QWidget):
         speed = telemetry.get("speed_kmh", 0.0)
         self.lbl_speed_val.setText(f"{speed:.1f} km/h")
         if speed > 18.0:
-            self.lbl_speed_val.setStyleSheet("color: #ef4444; font-size: 18px; font-weight: bold;")
+            self.lbl_speed_val.setStyleSheet("color: #ef4444; font-size: 20px; font-weight: bold;")
         elif speed > 10.0:
-            self.lbl_speed_val.setStyleSheet("color: #facc15; font-size: 18px; font-weight: bold;")
+            self.lbl_speed_val.setStyleSheet("color: #facc15; font-size: 20px; font-weight: bold;")
         else:
-            self.lbl_speed_val.setStyleSheet("color: #38bdf8; font-size: 18px; font-weight: bold;")
+            self.lbl_speed_val.setStyleSheet("color: #38bdf8; font-size: 20px; font-weight: bold;")
 
         rod = telemetry.get("current_rod")
         self.lbl_active_rod.setText(str(rod) if rod else "Midfield")
 
         pa = telemetry.get("possession_a", 50.0)
         pb = telemetry.get("possession_b", 50.0)
-        self.lbl_poss_split.setText(f"{pa:.1f}% A | {pb:.1f}% B")
+        self.lbl_poss_split.setText(f"{pa:.1f}% Blue | {pb:.1f}% Red")
 
         fps = telemetry.get("fps", 0.0)
         self.lbl_fps.setText(f"FPS: {fps:.1f}")
@@ -405,7 +416,6 @@ class DashboardTab(QWidget):
         type_item = QTableWidgetItem(event.event_type.value)
         desc_item = QTableWidgetItem(event.details)
 
-        # Color coding
         if event.event_type == EventType.GOAL:
             color = QColor("#ef4444") if event.team == "B" else QColor("#38bdf8")
             type_item.setForeground(color)
@@ -419,6 +429,5 @@ class DashboardTab(QWidget):
         self.event_table.setItem(row, 1, type_item)
         self.event_table.setItem(row, 2, desc_item)
 
-        # Keep max 50 events in view
         if self.event_table.rowCount() > 50:
             self.event_table.removeRow(50)

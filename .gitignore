@@ -39,6 +39,7 @@ ENV/
 !assets/*.jpg
 
 # Databases and temporary data
+*.db
 *.db-journal
 *.db-wal
 *.db-shm

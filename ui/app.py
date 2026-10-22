@@ -160,6 +160,7 @@ class MainWindow(QMainWindow):
         self.calibration_tab = CalibrationTab(self)
         self.calibration_tab.set_initial_points(self.cfg.get("calibration_points", []))
         self.calibration_tab.calibration_saved.connect(self._on_calibration_saved)
+        self.calibration_tab.live_calibration_updated.connect(self._on_live_calibration_updated)
         self.tabs.addTab(self.calibration_tab, "Perspective Calibration")
 
         # 3. HSV Color Tuner Tab
@@ -299,6 +300,10 @@ class MainWindow(QMainWindow):
         self.cfg.set("calibration_points", points)
         self.cfg.save()
         self.pipeline.update_from_config(self.cfg.data)
+
+    def _on_live_calibration_updated(self, points: list) -> None:
+        if len(points) == 4:
+            self.pipeline.homography.set_points(points)
 
     def _on_hsv_bounds_changed(self, bounds: dict) -> None:
         self.pipeline.detector.set_hsv_bounds(bounds)
