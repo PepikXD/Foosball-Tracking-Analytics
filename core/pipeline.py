@@ -27,6 +27,7 @@ class FrameProcessingOutput:
     detection_result: DetectionResult
     events: List[GameEvent]
     fps: float
+    raw_frame_clean: Optional[np.ndarray] = None
 
 
 class TrackerPipeline:
@@ -167,7 +168,8 @@ class TrackerPipeline:
             kalman_state=kalman_state,
             detection_result=det_result,
             events=events,
-            fps=fps
+            fps=fps,
+            raw_frame_clean=undistorted
         )
 
     def _annotate_rectified(self, canvas: np.ndarray,

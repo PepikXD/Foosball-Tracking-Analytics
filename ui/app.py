@@ -96,6 +96,12 @@ class MainWindow(QMainWindow):
         self.live_score_a: int = 0
         self.live_score_b: int = 0
 
+        # Cached frames for instantaneous tab switching
+        self._last_rect: Optional[QImage] = None
+        self._last_raw: Optional[QImage] = None
+        self._last_mask: Optional[QImage] = None
+        self._last_clean: Optional[QImage] = None
+
         self._init_menu()
         self._init_tabs()
         self._init_worker()
@@ -144,6 +150,7 @@ class MainWindow(QMainWindow):
 
     def _init_tabs(self) -> None:
         self.tabs = QTabWidget()
+        self.tabs.currentChanged.connect(self._on_tab_changed)
         self.setCentralWidget(self.tabs)
 
         # 1. Dashboard Tab
@@ -161,6 +168,9 @@ class MainWindow(QMainWindow):
         self.calibration_tab.set_initial_points(self.cfg.get("calibration_points", []))
         self.calibration_tab.calibration_saved.connect(self._on_calibration_saved)
         self.calibration_tab.live_calibration_updated.connect(self._on_live_calibration_updated)
+        self.calibration_tab.pause_toggled.connect(self._on_pause_toggled)
+        self.calibration_tab.seek_requested.connect(self._on_seek_requested)
+        self.calibration_tab.step_requested.connect(self._on_step_requested)
         self.tabs.addTab(self.calibration_tab, "Perspective Calibration")
 
         # 3. HSV Color Tuner Tab
@@ -169,6 +179,9 @@ class MainWindow(QMainWindow):
         self.hsv_tab.hsv_bounds_changed.connect(self._on_hsv_bounds_changed)
         self.hsv_tab.contour_filters_changed.connect(self._on_contour_filters_changed)
         self.hsv_tab.save_requested.connect(self._on_hsv_saved)
+        self.hsv_tab.pause_toggled.connect(self._on_pause_toggled)
+        self.hsv_tab.seek_requested.connect(self._on_seek_requested)
+        self.hsv_tab.step_requested.connect(self._on_step_requested)
         self.tabs.addTab(self.hsv_tab, "HSV Color Tuner")
 
         # 4. Fisheye Lens Tab
@@ -214,13 +227,30 @@ class MainWindow(QMainWindow):
     # -------------------------------------------------------------
     # Worker Thread Signal Slots
     # -------------------------------------------------------------
-    def _on_frames_ready(self, q_rect, q_raw, q_mask) -> None:
+    def _on_tab_changed(self, index: int) -> None:
+        """Immediately loads cached video frame when user switches tabs, even when paused."""
+        if self._last_rect is not None and not self._last_rect.isNull():
+            if index == 0:
+                self.dashboard_tab.update_frame(self._last_rect, self._last_raw, self._last_mask)
+            elif index == 1:
+                self.calibration_tab.update_frames(self._last_rect, self._last_clean or self._last_raw)
+            elif index == 2:
+                self.hsv_tab.update_views(self._last_rect, self._last_mask)
+            elif index == 3:
+                self.fisheye_tab.update_frame(self._last_raw)
+
+    def _on_frames_ready(self, q_rect, q_raw, q_mask, q_clean) -> None:
+        self._last_rect = q_rect
+        self._last_raw = q_raw
+        self._last_mask = q_mask
+        self._last_clean = q_clean
+
         current_tab_idx = self.tabs.currentIndex()
 
         if current_tab_idx == 0:
             self.dashboard_tab.update_frame(q_rect, q_raw, q_mask)
         elif current_tab_idx == 1:
-            self.calibration_tab.update_frames(q_rect, q_raw)
+            self.calibration_tab.update_frames(q_rect, q_clean or q_raw)
         elif current_tab_idx == 2:
             self.hsv_tab.update_views(q_rect, q_mask)
         elif current_tab_idx == 3:
@@ -231,6 +261,8 @@ class MainWindow(QMainWindow):
 
     def _on_playback_state_changed(self, is_playing: bool, cur_s: float, tot_s: float) -> None:
         self.dashboard_tab.update_playback_state(is_playing, cur_s, tot_s)
+        self.calibration_tab.update_playback_state(is_playing, cur_s, tot_s)
+        self.hsv_tab.update_playback_state(is_playing, cur_s, tot_s)
 
     def _on_event_detected(self, event: GameEvent) -> None:
         # 1. Update live ticker in dashboard
@@ -259,6 +291,9 @@ class MainWindow(QMainWindow):
 
     def _on_seek_requested(self, pct: float) -> None:
         self.worker.seek_position(pct)
+
+    def _on_step_requested(self, delta: int) -> None:
+        self.worker.step_frame(delta)
 
     def _on_speed_changed(self, speed: float) -> None:
         self.worker.set_playback_speed(speed)
@@ -300,16 +335,20 @@ class MainWindow(QMainWindow):
         self.cfg.set("calibration_points", points)
         self.cfg.save()
         self.pipeline.update_from_config(self.cfg.data)
+        self.worker.request_refresh()
 
     def _on_live_calibration_updated(self, points: list) -> None:
         if len(points) == 4:
             self.pipeline.homography.set_points(points)
+            self.worker.request_refresh()
 
     def _on_hsv_bounds_changed(self, bounds: dict) -> None:
         self.pipeline.detector.set_hsv_bounds(bounds)
+        self.worker.request_refresh()
 
     def _on_contour_filters_changed(self, min_a: float, max_a: float, min_c: float) -> None:
         self.pipeline.detector.set_filters(min_a, max_a, min_c)
+        self.worker.request_refresh()
 
     def _on_hsv_saved(self) -> None:
         bounds = self.hsv_tab.get_hsv_bounds()
@@ -324,6 +363,7 @@ class MainWindow(QMainWindow):
 
     def _on_distortion_changed(self, k1: float, k2: float, enabled: bool, focal: float) -> None:
         self.pipeline.fisheye.update_params(k1=k1, k2=k2, enabled=enabled, focal_scale=focal)
+        self.worker.request_refresh()
 
     def _on_distortion_saved(self) -> None:
         self.cfg.set("fisheye", {

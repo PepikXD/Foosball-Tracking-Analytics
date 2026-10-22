@@ -19,9 +19,14 @@ class HSVTunerTab(QWidget):
     hsv_bounds_changed = pyqtSignal(dict)
     contour_filters_changed = pyqtSignal(float, float, float)
     save_requested = pyqtSignal()
+    pause_toggled = pyqtSignal()
+    seek_requested = pyqtSignal(float)
+    step_requested = pyqtSignal(int)
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self._latest_qrect: Optional[QImage] = None
+        self._latest_qmask: Optional[QImage] = None
         self._init_ui()
 
     def _init_ui(self) -> None:
@@ -137,33 +142,76 @@ class HSVTunerTab(QWidget):
 
         main_layout.addWidget(controls_panel, stretch=2)
 
-        # Right Column: Side-by-side Viewports (Rectified Table and Mask)
+        # Right Column: Side-by-side Viewports (Rectified Table and Mask) with Playback bar
         views_panel = QFrame()
-        views_layout = QHBoxLayout(views_panel)
+        views_layout = QVBoxLayout(views_panel)
         views_layout.setContentsMargins(0, 0, 0, 0)
-        views_layout.setSpacing(12)
+        views_layout.setSpacing(8)
+
+        # Split frame for video feeds
+        split_frame = QFrame()
+        split_layout = QHBoxLayout(split_frame)
+        split_layout.setContentsMargins(0, 0, 0, 0)
+        split_layout.setSpacing(12)
 
         # Rectified Table View
         rect_group = QGroupBox("Rectified Color Feed")
         rect_group.setStyleSheet("color: #94a3b8; font-weight: bold;")
         rect_layout = QVBoxLayout(rect_group)
         self.lbl_rect_view = QLabel()
-        self.lbl_rect_view.setMinimumSize(280, 480)
+        self.lbl_rect_view.setMinimumSize(280, 440)
         self.lbl_rect_view.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.lbl_rect_view.setStyleSheet("background-color: #0b0f19; border: 1px solid #334155; border-radius: 4px;")
         rect_layout.addWidget(self.lbl_rect_view)
-        views_layout.addWidget(rect_group)
+        split_layout.addWidget(rect_group)
 
         # Binary Mask View
         mask_group = QGroupBox("Binary HSV Detection Mask")
         mask_group.setStyleSheet("color: #94a3b8; font-weight: bold;")
         mask_layout = QVBoxLayout(mask_group)
         self.lbl_mask_view = QLabel()
-        self.lbl_mask_view.setMinimumSize(280, 480)
+        self.lbl_mask_view.setMinimumSize(280, 440)
         self.lbl_mask_view.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.lbl_mask_view.setStyleSheet("background-color: #0b0f19; border: 1px solid #334155; border-radius: 4px;")
         mask_layout.addWidget(self.lbl_mask_view)
-        views_layout.addWidget(mask_group)
+        split_layout.addWidget(mask_group)
+
+        views_layout.addWidget(split_frame, stretch=1)
+
+        # Playback Controls Bar
+        playback_frame = QFrame()
+        playback_frame.setStyleSheet("background-color: #1e293b; border-radius: 6px; padding: 4px 8px;")
+        pb_layout = QHBoxLayout(playback_frame)
+        pb_layout.setContentsMargins(8, 4, 8, 4)
+        pb_layout.setSpacing(8)
+
+        self.btn_play_pause = QPushButton("Play")
+        self.btn_play_pause.setStyleSheet("background-color: #334155; color: white; font-weight: bold; padding: 4px 12px; border-radius: 4px;")
+        self.btn_play_pause.clicked.connect(lambda: self.pause_toggled.emit())
+
+        self.btn_step_back = QPushButton("<< -1s")
+        self.btn_step_back.setStyleSheet("background-color: #334155; color: white; font-weight: bold; padding: 4px 8px; border-radius: 4px;")
+        self.btn_step_back.clicked.connect(lambda: self.step_requested.emit(-30))
+
+        self.btn_step_fwd = QPushButton(">> +1s")
+        self.btn_step_fwd.setStyleSheet("background-color: #334155; color: white; font-weight: bold; padding: 4px 8px; border-radius: 4px;")
+        self.btn_step_fwd.clicked.connect(lambda: self.step_requested.emit(30))
+
+        self.seek_slider = QSlider(Qt.Orientation.Horizontal)
+        self.seek_slider.setRange(0, 1000)
+        self.seek_slider.setValue(0)
+        self.seek_slider.sliderMoved.connect(lambda v: self.seek_requested.emit(v / 1000.0))
+
+        self.lbl_time_pos = QLabel("00:00 / 00:00")
+        self.lbl_time_pos.setStyleSheet("color: #94a3b8; font-size: 11px; font-family: monospace;")
+
+        pb_layout.addWidget(self.btn_play_pause)
+        pb_layout.addWidget(self.btn_step_back)
+        pb_layout.addWidget(self.btn_step_fwd)
+        pb_layout.addWidget(self.seek_slider)
+        pb_layout.addWidget(self.lbl_time_pos)
+
+        views_layout.addWidget(playback_frame)
 
         main_layout.addWidget(views_panel, stretch=3)
 
@@ -237,13 +285,32 @@ class HSVTunerTab(QWidget):
         self.save_requested.emit()
         QMessageBox.information(self, "Saved", "HSV Thresholds successfully saved to config.json!")
 
-    def update_views(self, q_rect: QImage, q_mask: QImage) -> None:
-        if not q_rect.isNull():
-            pix = QPixmap.fromImage(q_rect)
+    def update_playback_state(self, is_playing: bool, current_sec: float, total_sec: float) -> None:
+        self.btn_play_pause.setText("Pause" if is_playing else "Play")
+        if total_sec > 0:
+            pct = int((current_sec / total_sec) * 1000)
+            if not self.seek_slider.isSliderDown():
+                self.seek_slider.setValue(pct)
+            cur_m, cur_s = divmod(int(current_sec), 60)
+            tot_m, tot_s = divmod(int(total_sec), 60)
+            self.lbl_time_pos.setText(f"{cur_m:02d}:{cur_s:02d} / {tot_m:02d}:{tot_s:02d}")
+
+    def resizeEvent(self, event) -> None:
+        super().resizeEvent(event)
+        self._refresh_views()
+
+    def _refresh_views(self) -> None:
+        if self._latest_qrect is not None and not self._latest_qrect.isNull():
+            pix = QPixmap.fromImage(self._latest_qrect)
             scaled = pix.scaled(self.lbl_rect_view.size(), Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.FastTransformation)
             self.lbl_rect_view.setPixmap(scaled)
 
-        if not q_mask.isNull():
-            pix = QPixmap.fromImage(q_mask)
+        if self._latest_qmask is not None and not self._latest_qmask.isNull():
+            pix = QPixmap.fromImage(self._latest_qmask)
             scaled = pix.scaled(self.lbl_mask_view.size(), Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.FastTransformation)
             self.lbl_mask_view.setPixmap(scaled)
+
+    def update_views(self, q_rect: QImage, q_mask: QImage) -> None:
+        self._latest_qrect = q_rect
+        self._latest_qmask = q_mask
+        self._refresh_views()

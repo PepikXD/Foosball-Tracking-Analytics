@@ -11,7 +11,7 @@ from PyQt6.QtCore import Qt, pyqtSignal, QPointF
 from PyQt6.QtGui import QImage, QPixmap, QPainter, QPen, QColor, QFont, QMouseEvent
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QFrame, QMessageBox, QGroupBox, QSplitter
+    QFrame, QMessageBox, QGroupBox, QSplitter, QSlider
 )
 
 from core.homography import HomographyTransformer
@@ -83,13 +83,20 @@ class DraggableCornerCanvas(QLabel):
 
         cx, cy = coords
 
-        # Check if clicking existing corner to drag
+        # Compute widget display scale
+        lbl_w = self.width()
+        lbl_h = self.height()
+        img_w = self.orig_image.width()
+        img_h = self.orig_image.height()
+        scale = min(lbl_w / img_w, lbl_h / img_h)
+
+        # Check if clicking existing corner to drag (screen-space grab radius)
         clicked_idx = None
         min_dist = float("inf")
         for i, pt in enumerate(self.calibration_points):
-            dist = np.hypot(pt[0] - cx, pt[1] - cy)
-            if dist < self.grab_radius_px and dist < min_dist:
-                min_dist = dist
+            dist_screen = np.hypot(pt[0] - cx, pt[1] - cy) * scale
+            if dist_screen < 32.0 and dist_screen < min_dist:
+                min_dist = dist_screen
                 clicked_idx = i
 
         if clicked_idx is not None:
@@ -118,11 +125,18 @@ class DraggableCornerCanvas(QLabel):
             return
 
         # Otherwise handle hover cursor feedback
-        if coords is not None and len(self.calibration_points) > 0:
+        if coords is not None and len(self.calibration_points) > 0 and self.orig_image:
             cx, cy = coords
+            lbl_w = self.width()
+            lbl_h = self.height()
+            img_w = self.orig_image.width()
+            img_h = self.orig_image.height()
+            scale = min(lbl_w / img_w, lbl_h / img_h)
+
             hovered = None
             for i, pt in enumerate(self.calibration_points):
-                if np.hypot(pt[0] - cx, pt[1] - cy) < self.grab_radius_px:
+                dist_screen = np.hypot(pt[0] - cx, pt[1] - cy) * scale
+                if dist_screen < 32.0:
                     hovered = i
                     break
 
@@ -143,6 +157,10 @@ class DraggableCornerCanvas(QLabel):
             if len(self.calibration_points) == 4:
                 pts_list = [[p[0], p[1]] for p in self.calibration_points]
                 self.points_committed.emit(pts_list)
+
+    def resizeEvent(self, event) -> None:
+        super().resizeEvent(event)
+        self.update_pixmap()
 
     def update_pixmap(self) -> None:
         if self.orig_image is None or self.orig_image.isNull():
@@ -227,11 +245,15 @@ class CalibrationTab(QWidget):
     """
     calibration_saved = pyqtSignal(list)       # [[x, y], ...] saved to config
     live_calibration_updated = pyqtSignal(list) # [[x, y], ...] emitted live during drag
+    pause_toggled = pyqtSignal()
+    seek_requested = pyqtSignal(float)
+    step_requested = pyqtSignal(int)
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.current_points: List[Tuple[float, float]] = []
         self._latest_raw_qimg: Optional[QImage] = None
+        self._latest_rect_qimg: Optional[QImage] = None
         self._latest_raw_mat: Optional[np.ndarray] = None
 
         # Dedicated homography instance for instantaneous warp feedback
@@ -311,6 +333,58 @@ class CalibrationTab(QWidget):
 
         layout.addWidget(splitter, stretch=1)
 
+        # Playback Controls Bar
+        playback_frame = QFrame()
+        playback_frame.setStyleSheet("background-color: #1e293b; border-radius: 6px; padding: 4px 8px;")
+        pb_layout = QHBoxLayout(playback_frame)
+        pb_layout.setContentsMargins(8, 4, 8, 4)
+        pb_layout.setSpacing(8)
+
+        self.btn_play_pause = QPushButton("Play")
+        self.btn_play_pause.setStyleSheet("background-color: #334155; color: white; font-weight: bold; padding: 4px 12px; border-radius: 4px;")
+        self.btn_play_pause.clicked.connect(lambda: self.pause_toggled.emit())
+
+        self.btn_step_back = QPushButton("<< -1s")
+        self.btn_step_back.setStyleSheet("background-color: #334155; color: white; font-weight: bold; padding: 4px 8px; border-radius: 4px;")
+        self.btn_step_back.clicked.connect(lambda: self.step_requested.emit(-30))
+
+        self.btn_step_fwd = QPushButton(">> +1s")
+        self.btn_step_fwd.setStyleSheet("background-color: #334155; color: white; font-weight: bold; padding: 4px 8px; border-radius: 4px;")
+        self.btn_step_fwd.clicked.connect(lambda: self.step_requested.emit(30))
+
+        self.seek_slider = QSlider(Qt.Orientation.Horizontal)
+        self.seek_slider.setRange(0, 1000)
+        self.seek_slider.setValue(0)
+        self.seek_slider.sliderMoved.connect(lambda v: self.seek_requested.emit(v / 1000.0))
+
+        self.lbl_time_pos = QLabel("00:00 / 00:00")
+        self.lbl_time_pos.setStyleSheet("color: #94a3b8; font-size: 11px; font-family: monospace;")
+
+        pb_layout.addWidget(self.btn_play_pause)
+        pb_layout.addWidget(self.btn_step_back)
+        pb_layout.addWidget(self.btn_step_fwd)
+        pb_layout.addWidget(self.seek_slider)
+        pb_layout.addWidget(self.lbl_time_pos)
+
+        layout.addWidget(playback_frame)
+
+    def update_playback_state(self, is_playing: bool, current_sec: float, total_sec: float) -> None:
+        self.btn_play_pause.setText("Pause" if is_playing else "Play")
+        if total_sec > 0:
+            pct = int((current_sec / total_sec) * 1000)
+            if not self.seek_slider.isSliderDown():
+                self.seek_slider.setValue(pct)
+            cur_m, cur_s = divmod(int(current_sec), 60)
+            tot_m, tot_s = divmod(int(total_sec), 60)
+            self.lbl_time_pos.setText(f"{cur_m:02d}:{cur_s:02d} / {tot_m:02d}:{tot_s:02d}")
+
+    def resizeEvent(self, event) -> None:
+        super().resizeEvent(event)
+        if self._latest_rect_qimg is not None and not self._latest_rect_qimg.isNull():
+            pix = QPixmap.fromImage(self._latest_rect_qimg)
+            scaled = pix.scaled(self.preview_label.size(), Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.FastTransformation)
+            self.preview_label.setPixmap(scaled)
+
     def set_initial_points(self, points: List[List[float]]) -> None:
         self.current_points = [(float(p[0]), float(p[1])) for p in points]
         self.canvas_label.set_points(points)
@@ -319,6 +393,7 @@ class CalibrationTab(QWidget):
 
     def update_frames(self, q_rect: QImage, q_raw: QImage) -> None:
         self._latest_raw_qimg = q_raw
+        self._latest_rect_qimg = q_rect
 
         # If not actively dragging, update camera canvas with newest frame
         if self.canvas_label.active_corner_idx is None:

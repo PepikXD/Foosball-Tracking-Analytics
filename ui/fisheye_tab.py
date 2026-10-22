@@ -149,7 +149,15 @@ class FisheyeTab(QWidget):
         self.save_requested.emit()
         QMessageBox.information(self, "Saved", "Fisheye distortion parameters saved to config.json!")
 
+    def resizeEvent(self, event) -> None:
+        super().resizeEvent(event)
+        if hasattr(self, "_latest_qraw") and self._latest_qraw is not None and not self._latest_qraw.isNull():
+            pix = QPixmap.fromImage(self._latest_qraw)
+            scaled = pix.scaled(self.lbl_preview.size(), Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.FastTransformation)
+            self.lbl_preview.setPixmap(scaled)
+
     def update_frame(self, q_raw: QImage) -> None:
+        self._latest_qraw = q_raw
         if not q_raw.isNull():
             pix = QPixmap.fromImage(q_raw)
             scaled = pix.scaled(self.lbl_preview.size(), Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.FastTransformation)
